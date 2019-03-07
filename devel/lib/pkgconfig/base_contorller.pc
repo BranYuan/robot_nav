@@ -1,0 +1,8 @@
+prefix=/home/sweet/github_store/robot_nav/devel
+
+Name: base_contorller
+Description: Description of base_contorller
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/sweet/github_store/robot_nav/devel/lib 
+Requires: 
