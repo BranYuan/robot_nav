@@ -77,12 +77,17 @@ def status_pup():
             cv2.imshow('preview', frame)
             #调用函数，处理图像
             frame,result = process_frame(frame,30)
+
+            key = cv2.waitKey(20)
+            if key == 27:
+                break
+
         else:
             result = 0.5
         
-        loginfo = "%s result:" % rospy.get_time() + str(result)
+        #loginfo = "%s result:" % rospy.get_time() + str(result)
         # 记录log信息
-        rospy.loginfo(loginfo)
+        # rospy.loginfo(loginfo)
         #发布结果
         pup.publish(result)
         rate.sleep()
