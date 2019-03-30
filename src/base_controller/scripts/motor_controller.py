@@ -16,10 +16,10 @@ from std_msgs.msg import Float32, Float32MultiArray
 
 enables_motor = [0x01,0x10,0x46,0x57,0x00,0x01,0x02,0x00,0x01,0x4d,0xb3]    #电机使能
 disables_motor = [0x01,0x10,0x46,0x57,0x00,0x01,0x02,0x00,0x00,0x8c,0x73]   #电机取消使能
-speed_l_cmd = [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x27,0x10,0x00,0x00,0xf9,0xc5]    #左电机速度
-speed_r_cmd = [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x27,0x10,0x00,0x00,0xf9,0xc5]    #右电机速度
-speeds_cw =   [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x27,0x10,0x00,0x00,0xf9,0xc5]    #电机正转速度
-speeds_ccw =  [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0xd8,0xf0,0xff,0xff,0xc9,0x97]    #电机反转速度
+speed_r_cmd = [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x13,0x88,0x00,0x00,0x76,0x1a]    #右电机速度,默认500
+speed_l_cmd = [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0xec,0x78,0xff,0xff,0x47,0x8d]    #左电机速度，默认-500
+speeds_cw =   [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x13,0x88,0x00,0x00,0x76,0x1a]    #电机正转速度,默认500
+speeds_ccw =  [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0xec,0x78,0xff,0xff,0x47,0x8d]    #电机反转速度，默认-500
 auto_flag = False   #自动运行标志，True为自动运行模式，False为遥控模式
 
 
@@ -32,10 +32,12 @@ ser_right = SerialCmd.SerialCmd(port='/dev/ttyS3')  #右电机通信端口
 def speed_calculate(speed_l,speed_r):
     speed_l = int(speed_l*10)     #左轮电机速度的10倍
     speed_r = int(speed_r*10)     #右轮电机速度的10倍
-    speed_l_cmd[7] = speed_l >> 8 & 0xff    #速度高八位
+    #print(str(speed_l) + '-------' + str(speed_r))
+    speed_l = 0xffff - speed_l +1 #右轮与左轮转向相反
     speed_l_cmd[8] = speed_l & 0xff         #速度低八位
-    speed_r_cmd[7] = speed_r >> 8 & 0xff
+    speed_l_cmd[7] = speed_l >> 8 & 0xff    #速度高八位
     speed_r_cmd[8] = speed_r & 0xff
+    speed_r_cmd[7] = speed_r >> 8 & 0xff
     crc_calculate(speed_l_cmd)        #校验位计算
     crc_calculate(speed_r_cmd)
 
@@ -70,13 +72,14 @@ def auto_run(speed_l, speed_r):
     if ser_4G.serial.isOpen():
         if ser_4G.serial.inWaiting():
             cmd_data = ser_4G.receive_info_str()
+            ser_4G.send_cmd(cmd_data)
             if log_file:
                 log_file.write(time.strftime("%y-%m-%d-%H:%M:%S",time.localtime(time.time()))+'----'+cmd_data)
         else:
             cmd_data = None
     else:
         cmd_data = None
-    # print(cmd_data)
+    #print(cmd_data)
     if cmd_data:
         #以*开头，#结尾，提取命令字段
         head = cmd_data.find("*")
@@ -96,12 +99,14 @@ def auto_run(speed_l, speed_r):
                 ser_left.open_port()
             if ser_left.serial.isOpen():
                 ser_left.send_cmd(disables_motor)
-                log_file.write('----cmd_left_motor sended')
+                if log_file:
+                    log_file.write('----cmd_left_motor sended')
             if not ser_right.serial.isOpen():
                 ser_right.open_port()
             if ser_right.serial.isOpen():
                 ser_right.send_cmd(disables_motor)
-                log_file.write('----cmd_right_motor sended')
+                if log_file:
+                    log_file.write('----cmd_right_motor sended')
         
         #前进
         elif cmd_data == '*AHEAD#':
@@ -112,14 +117,16 @@ def auto_run(speed_l, speed_r):
                 ser_left.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_left.send_cmd(speeds_ccw)
-                log_file.write('----cmd_left_motor sended')
+                if log_file:
+                    log_file.write('----cmd_left_motor sended')
             if not ser_right.serial.isOpen():
                 ser_right.open_port()
             if ser_right.serial.isOpen():
                 ser_right.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_right.send_cmd(speeds_cw)
-                log_file.write('----cmd_right_motor sended')
+                if log_file:
+                    log_file.write('----cmd_right_motor sended')
         
         #后退
         elif cmd_data == '*BACK#':
@@ -130,14 +137,16 @@ def auto_run(speed_l, speed_r):
                 ser_left.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_left.send_cmd(speeds_cw)
-                log_file.write('----cmd_left_motor sended')
+                if log_file:
+                    log_file.write('----cmd_left_motor sended')
             if not ser_right.serial.isOpen():
                 ser_right.open_port()
             if ser_right.serial.isOpen():
                 ser_right.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_right.send_cmd(speeds_ccw)
-                log_file.write('----cmd_right_motor sended')
+                if log_file:
+                    log_file.write('----cmd_right_motor sended')
         
         #左转
         elif cmd_data == '*LEFT#':
@@ -148,14 +157,16 @@ def auto_run(speed_l, speed_r):
                 ser_left.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_left.send_cmd(speeds_cw)
-                log_file.write('----cmd_left_motor sended')
+                if log_file:
+                    log_file.write('----cmd_left_motor sended')
             if not ser_right.serial.isOpen():
                 ser_right.open_port()
             if ser_right.serial.isOpen():
                 ser_right.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_right.send_cmd(speeds_cw)
-                log_file.write('----cmd_right_motor sended')
+                if log_file:
+                    log_file.write('----cmd_right_motor sended')
         
         #右转
         elif cmd_data == '*RIGHT#':
@@ -166,19 +177,22 @@ def auto_run(speed_l, speed_r):
                 ser_left.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_left.send_cmd(speeds_ccw)
-                log_file.write('----cmd_left_motor sended')
+                if log_file:
+                    log_file.write('----cmd_left_motor sended')
             if not ser_right.serial.isOpen():
                 ser_right.open_port()
             if ser_right.serial.isOpen():
                 ser_right.send_cmd(enables_motor)
                 time.sleep(0.1)
                 ser_right.send_cmd(speeds_ccw)
-                log_file.write('----cmd_right_motor sended')
+                if log_file:
+                    log_file.write('----cmd_right_motor sended')
         
         #自动运行
         elif cmd_data == "*AUTO_RUN#":
             auto_flag = True
-            log_file.write('----auto_run')
+            if log_file:
+                log_file.write('----auto_run')
         # print('end')
     
     
@@ -190,15 +204,15 @@ def auto_run(speed_l, speed_r):
             ser_left.open_port()
         if ser_left.serial.isOpen():
             ser_left.send_cmd(enables_motor)
-            time.sleep(0.1)
+            time.sleep(0.01)
             ser_left.send_cmd(speed_l_cmd)
         if not ser_right.serial.isOpen():
             ser_right.open_port()
         if ser_right.serial.isOpen():
             ser_right.send_cmd(enables_motor)
-            time.sleep(0.1)
+            time.sleep(0.01)
             ser_right.send_cmd(speed_r_cmd)
-        # print("auto_run:" + str(speed_l) + str(speed_r))
+        print("auto_run:" + str(speed_l) + str(speed_r))
     
     if log_file:
         if cmd_data:
@@ -206,15 +220,17 @@ def auto_run(speed_l, speed_r):
         log_file.close
     
 def callback(data):
-
+    cur = time.time()
     speed_l = data.data[0]
     speed_r = data.data[1]
     auto_run(speed_l, speed_r) 
-    # rospy.loginfo(rospy.get_caller_id() + "I heard %s", str(data.data))
-     
+    # rospy.loginfo("I heard %s", str(speed_l) + "----" + str(speed_r))
+    # print(str(time.time()-cur)) 
 
 def motor_controller():
+    #创建motor_controller节点
     rospy.init_node('motor_controller',anonymous = True)
+    #订阅话题:speed
     rospy.Subscriber('speed', Float32MultiArray, callback)
     rospy.spin()
     if ser_4G.serial.isOpen():

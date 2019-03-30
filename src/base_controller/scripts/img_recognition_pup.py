@@ -52,7 +52,7 @@ def process_frame(frame, s = 15):
 
 def status_pup():
     # 发布者：img_recognition
-    pup = rospy.Publisher('img_status',Float32,queue_size = 2)
+    pup = rospy.Publisher('img_status',Float32,queue_size = 1)
     # 发布节点：img_status
     rospy.init_node('img_recognition_pup',anonymous = True)
     #发布频率：10Hz

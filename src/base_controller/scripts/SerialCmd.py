@@ -16,7 +16,7 @@ class SerialCmd(object):
         self.bytesize = 8
         self.parity = 'N'
         self.stopbits = 1
-        self.timeout = 0.2
+        self.timeout = 0.5
         self.__portValid = False
         self.write_timeout = 0.2
         self.serial = serial.Serial(port=self.port, baudrate=self.bauterate, bytesize=self.bytesize,
@@ -91,13 +91,12 @@ class SerialCmd(object):
         return result
 
     def receive_info_str(self):
-        #response = ''
+        response = ''
         if self.serial.in_waiting:
-            response = self.serial.readall()
+            response = self.serial.read_until('#')
+            print(response)
             # response = self.convert_hex(response)
-            return response
-        else:
-            return None
+        return response
 
 
 if __name__ == '__main__':
