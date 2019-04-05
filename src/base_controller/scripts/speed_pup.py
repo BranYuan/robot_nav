@@ -13,12 +13,12 @@ from std_msgs.msg import Float32, Float32MultiArray
 from math import isnan
 
 MAX_SPEED = 600 # 电机最大限制速度
-MIN_SPEED = 200 #电机最小速度限制
-DELTA = 50     # PID算法运行时，速度变化的基数
+MIN_SPEED = 100 #电机最小速度限制
+DELTA = 20     # PID算法运行时，速度变化的基数
 GOAL = 0.5      # 目标位置
 
 # PI调节器默认参数定义
-PID_ARG = {'kp':10.0, 'ki':2, 'kd':2, 'ek':0.0, 'ek1':0.0, 'ek2':0, 'uk': 0.0, 'uk1':0.0, 'adjust': 0}
+PID_ARG = {'kp':30.0, 'ki':10, 'kd':0, 'ek':0.0, 'ek1':0.0, 'ek2':0, 'uk': 0.0, 'uk1':0.0, 'adjust': 0}
 
 
 # pid系数生成函数
@@ -28,7 +28,7 @@ def motor_pid(result = 0.5, PID_ARG = PID_ARG):
         result = 0.5
     PID_ARG['ek'] = GOAL - result
 
-    if abs(PID_ARG['ek']) < 0.05:
+    if abs(PID_ARG['ek']) < 0.06:
         adjust = 0
     else:
         PID_ARG['uk'] = PID_ARG['kp'] * PID_ARG['ek'] + PID_ARG['ki'] * PID_ARG['ek2'] + PID_ARG['kd'] * (PID_ARG['ek1'] - PID_ARG['ek'])
@@ -45,17 +45,19 @@ def speed_calc(result):
     speed_delta = DELTA * PID_ARG['adjust'] #速度调整量
     speed_l = speed_r = MAX_SPEED #左右电机转速
     if speed_delta < 0:
-        speed_l += speed_delta
+        speed_r += speed_delta
     else:
-        speed_r -= speed_delta
-
+        speed_l -= speed_delta
+    speed_r, speed_l = speed_l, speed_r
     if speed_l < MIN_SPEED:
         speed_l = MIN_SPEED
         PID_ARG['uk'] = 0.0
     if speed_r < MIN_SPEED:
         speed_r = MIN_SPEED
         PID_ARG['uk'] = 0.0
-
+    # 当图像内无标识线或者摄像头无返回图像时，速度为0
+    if isnan(result) or result < 0:
+        speed_l = speed_r = 0;
     return speed_l, speed_r
         
 
@@ -69,6 +71,7 @@ def callback(data, pup):
     speed.data = speed_calc(result)
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", str(result))
     # print(speed)
+    print(result)
     print(speed.data)
     pup.publish(speed)
     return result

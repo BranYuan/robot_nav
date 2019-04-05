@@ -18,7 +18,7 @@ import time
 
 
 # 图像处理，参数s为图像识别阈值，取值0-255，默认s=15，返回新图像对象和图像灰度位置平均百分比
-def process_frame(frame, s = 15):
+def process_frame(frame, s = 5):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     sensitivity = s
@@ -56,7 +56,7 @@ def status_pup():
     # 发布节点：img_status
     rospy.init_node('img_recognition_pup',anonymous = True)
     #发布频率：10Hz
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(4)
     
     #生成图像显示窗口
     cv2.namedWindow("preview")
@@ -81,10 +81,9 @@ def status_pup():
             key = cv2.waitKey(20)
             if key == 27:
                 break
-
+        #如果没有读到图像，result小于0
         else:
-            result = 0.5
-        
+            result = -1
         #loginfo = "%s result:" % rospy.get_time() + str(result)
         # 记录log信息
         # rospy.loginfo(loginfo)
