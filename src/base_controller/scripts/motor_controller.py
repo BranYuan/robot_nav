@@ -82,7 +82,7 @@ def auto_run(speed_l, speed_r):
     global auto_flag
     #打开端口
     if not ser_4G.serial.isOpen():
-        ser_4G.serial.open_port()
+        ser_4G.open_port()
     #若端口打开，且有数据输入，则接收，并记录与logfile中
     if ser_4G.serial.isOpen():
         if ser_4G.serial.inWaiting():
@@ -118,7 +118,7 @@ def auto_run(speed_l, speed_r):
                 manul_speed_calculate(max_speed, speeds_cw, speeds_ccw)
                 # 开4G串口
                 if not ser_4G.serial.isOpen():
-                    ser_4G.serial.open_port()
+                    ser_4G.open_port()
                 if ser_4G.serial.isOpen:
                     ser_4G.send_cmd("*SPEED_OK#")
                     if log_file:
