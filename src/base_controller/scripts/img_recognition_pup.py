@@ -73,20 +73,19 @@ def status_pup():
         if rval:
             #读取图像
             rval, frame = vc.read()
-            #显示摄像头图形
-            cv2.imshow('preview', frame)
             #调用函数，处理图像
             frame,result = process_frame(frame,30)
-
+            # 显示摄像头图形
+            cv2.imshow('preview',frame)
             key = cv2.waitKey(20)
             if key == 27:
                 break
         #如果没有读到图像，result小于0
         else:
             result = -1
-        #loginfo = "%s result:" % rospy.get_time() + str(result)
+        loginfo = "%s result:" % rospy.get_time() + str(result)
         # 记录log信息
-        # rospy.loginfo(loginfo)
+        rospy.loginfo(loginfo)
         #发布结果
         pup.publish(result)
         rate.sleep()
