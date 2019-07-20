@@ -14,19 +14,43 @@ import time
 from std_msgs.msg import Float32, Float32MultiArray
 
 MAX_SPEED = 2500    # 电机最大速度
+MAX_ANALOG = 360    # 模拟量最大值
 enables_motor = [0x01,0x10,0x46,0x57,0x00,0x01,0x02,0x00,0x01,0x4d,0xb3]    #电机使能
 disables_motor = [0x01,0x10,0x46,0x57,0x00,0x01,0x02,0x00,0x00,0x8c,0x73]   #电机取消使能
 speed_r_cmd = [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x13,0x88,0x00,0x00,0x76,0x1a]    #右电机速度,默认500
 speed_l_cmd = [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0xec,0x78,0xff,0xff,0x47,0x8d]    #左电机速度，默认-500
 speeds_cw =   [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x61,0xa8,0x00,0x00,0x6c,0xa8]    #电机正转速度,默认500
 speeds_ccw =  [0x01,0x10,0x44,0x20,0x00,0x02,0x04,0x9e,0x58,0xff,0xff,0x5d,0x3f]    #电机反转速度，默认-500
+analog_value = [0x01,0x06,0x20,0x01,0x01,0x68,0xD3,0xB4]
+analog_0 = [0x01,0x06,0x20,0x01,0x00,0x00,0xD3,0xCA]
+
 auto_flag = False   #自动运行标志，True为自动运行模式，False为遥控模式
 
+'''
+启动电机所需参数设置：
+电机状态寄存器:默认0，电机停止，等于1电机启动，等于2电机启动完成
+电机启动时间：默认3.0，即在3.0ms内启动电机从零加速到最大
+启动电机所需时段：默认分5级速度启动
+接收到启动电机命令时CPU时间
+电机启动速度等级过程记录
+'''
+START_BR_MOTOR = [0,3.0,4,0,0] 
 
+'''
+系统内端口号——————面板上标记端口号
+    ttyS4               COM1
+    ttyS1               COM2
+    ttyS2               COM3
+    ttyS3               COM4
+    ttyS5               COM5
+    ttyS6               COM6
+'''
 ser_4G = SerialCmd.SerialCmd(port='/dev/ttyS4')     #4G信号通信端口
 ser = SerialCmd.SerialCmd()     #下位机通信端口
 ser_left = SerialCmd.SerialCmd(port='/dev/ttyS2')   #左电机通信端口
 ser_right = SerialCmd.SerialCmd(port='/dev/ttyS3')  #右电机通信端口
+ser_analog = SerialCmd.SerialCmd(port='/dev/ttyS5') #模拟量电压模块控制端口
+
 
 
 # 遥控运行时，左右轮速度的计算函数
@@ -72,12 +96,37 @@ def crc_calculate(data_list):
         data_list[-2] =  crc & 0xff
         data_list[-1] =  crc >>8 & 0xff
 
+# 发送串口命令，设置模拟量模块输出值
+def set_analog():
+    speed = MAX_ANALOG * START_BR_MOTOR[4] / START_BR_MOTOR[2]
+    analog_value[4] = speed >> 8 & 0xff
+    analog_value[5] = speed & 0xff
+    crc_calculate(analog_value)
+    # print('phase' + str (START_BR_MOTOR[4]))
+    # print(analog_value)
+    if not ser_analog.serial.isOpen():
+        ser_analog.open_port()
+    if ser_analog.serial.isOpen():
+        ser_analog.send_cmd(analog_value)
+
+#启动电机方法
+def auto_start_motor():
+    if START_BR_MOTOR[4] == 0 :
+        START_BR_MOTOR[4] = 1
+        set_analog()
+    elif START_BR_MOTOR[4] == START_BR_MOTOR[2]:
+        START_BR_MOTOR[0] = 2
+    else:
+        if time.time()-START_BR_MOTOR[3] > START_BR_MOTOR[4] * START_BR_MOTOR[1]/(START_BR_MOTOR[2]-1):
+            START_BR_MOTOR[4] += 1
+            set_analog()
+
 
 # 自动运行
 def auto_run(speed_l, speed_r):
     cur_time = time.strftime("%y-%m-%d",time.localtime(time.time()))
     #log_file = open('/home/guardrobot/guardRobot/log_file/'+cur_time+'.txt','a')
-    log_file = open('/home/sweet/github_store/sweet_robot/4G_controller/log_file'+cur_time+'.txt','a')
+    log_file = None # open('/home/sweet/github_store/sweet_robot/4G_controller/log_file'+cur_time+'.txt','a')
     cmd_data = None     #接收控制命令变量
     global auto_flag
     #打开端口
@@ -102,6 +151,7 @@ def auto_run(speed_l, speed_r):
         end = cmd_data.find("#")
         if end > head >-1:
             cmd_data = cmd_data[head:end+1]
+
         
         # 通过遥控改变最大运行速度
         #解析命令：SPEEDXXXX,XXXX为最大速度值
@@ -149,8 +199,7 @@ def auto_run(speed_l, speed_r):
             if ser_right.serial.isOpen():
                 ser_right.send_cmd(disables_motor)
                 if log_file:
-                    log_file.write('----cmd_right_motor sended')
-        
+                    log_file.write('----cmd_right_motor sended') 
         #前进
         elif cmd_data == '*AHEAD#':
             auto_flag = False
@@ -170,7 +219,6 @@ def auto_run(speed_l, speed_r):
                 ser_right.send_cmd(speeds_cw)
                 if log_file:
                     log_file.write('----cmd_right_motor sended')
-        
         #后退
         elif cmd_data == '*BACK#':
             auto_flag = False
@@ -190,7 +238,6 @@ def auto_run(speed_l, speed_r):
                 ser_right.send_cmd(speeds_ccw)
                 if log_file:
                     log_file.write('----cmd_right_motor sended')
-        
         #左转
         elif cmd_data == '*LEFT#':
             auto_flag = False
@@ -210,7 +257,6 @@ def auto_run(speed_l, speed_r):
                 ser_right.send_cmd(speeds_cw)
                 if log_file:
                     log_file.write('----cmd_right_motor sended')
-        
         #右转
         elif cmd_data == '*RIGHT#':
             auto_flag = False
@@ -230,15 +276,27 @@ def auto_run(speed_l, speed_r):
                 ser_right.send_cmd(speeds_ccw)
                 if log_file:
                     log_file.write('----cmd_right_motor sended')
-        
+        # 开沟停止
+        elif cmd_data == "*BRSTOP#":
+            START_BR_MOTOR[0] = 0
+            if not ser_analog.serial.isOpen():
+                ser_analog.open_port()
+            if ser_analog.serial.isOpen():
+                ser_analog.send_cmd(analog_0)
+        # 开沟启动命令
+        elif cmd_data == "*BRGO#":
+            START_BR_MOTOR[0] = 1
+            print(START_BR_MOTOR[0])
+            START_BR_MOTOR[3] = time.time()
+            START_BR_MOTOR[4] = 0
+
         #自动运行
         elif cmd_data == "*AUTO_RUN#":
             auto_flag = True
             if log_file:
                 log_file.write('----auto_run')
-        # print('end')
-    
-    
+    if START_BR_MOTOR[0] == 1:
+        auto_start_motor()
     #自动运行
     speed_calculate(speed_l,speed_r)
     if auto_flag:

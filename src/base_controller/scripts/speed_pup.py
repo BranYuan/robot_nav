@@ -12,13 +12,13 @@ import rospy
 from std_msgs.msg import Float32, Float32MultiArray
 from math import isnan
 
-MAX_SPEED = 900 # 电机最大限制速度
-MIN_SPEED = 200 #电机最小速度限制
+MAX_SPEED = 1500 # 电机最大限制速度
+MIN_SPEED = 500 #电机最小速度限制
 DELTA = 20     # PID算法运行时，速度变化的基数
 GOAL = 0.5      # 目标位置
 
 # PI调节器默认参数定义
-PID_ARG = {'kp':80.0, 'ki':0.1, 'kd':0, 'ek':0.0, 'ek1':0.0, 'ek2':0, 'uk': 0.0, 'uk1':0.0, 'adjust': 0}
+PID_ARG = {'kp':200.0, 'ki':0.1, 'kd':0, 'ek':0.0, 'ek1':0.0, 'ek2':0, 'uk': 0.0, 'uk1':0.0, 'adjust': 0}
 
 
 # pid系数生成函数

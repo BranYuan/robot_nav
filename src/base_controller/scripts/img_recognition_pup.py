@@ -18,7 +18,7 @@ import time
 
 
 # 图像处理，参数s为图像识别阈值，取值0-255，默认s=15，返回新图像对象和图像灰度位置平均百分比
-def process_frame(frame, s = 5):
+def process_frame(frame, s = 1.5):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     sensitivity = s
