@@ -1,2 +1,2 @@
-base_controller
+base_controller:pr2_moveit_generated:rob_control:robot_arm:robot_arm_config:robot_arm_interface
 -DCATKIN_DEVEL_PREFIX=/home/sweet/github_store/robot_nav/devel -DCMAKE_INSTALL_PREFIX=/home/sweet/github_store/robot_nav/install -G Unix Makefiles

@@ -1,0 +1,8 @@
+prefix=/home/sweet/github_store/robot_nav/install
+
+Name: rob_control
+Description: Description of rob_control
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/sweet/github_store/robot_nav/install/lib 
+Requires: actionlib_msgs

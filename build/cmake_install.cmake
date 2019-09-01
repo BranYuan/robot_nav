@@ -73,38 +73,47 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
-   "/home/sweet/github_store/robot_nav/install/setup.bash")
+   "/home/sweet/github_store/robot_nav/install/setup.bash;/home/sweet/github_store/robot_nav/install/local_setup.bash")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/home/sweet/github_store/robot_nav/install" TYPE FILE FILES "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/setup.bash")
+file(INSTALL DESTINATION "/home/sweet/github_store/robot_nav/install" TYPE FILE FILES
+    "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/setup.bash"
+    "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/local_setup.bash"
+    )
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
-   "/home/sweet/github_store/robot_nav/install/setup.sh")
+   "/home/sweet/github_store/robot_nav/install/setup.sh;/home/sweet/github_store/robot_nav/install/local_setup.sh")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/home/sweet/github_store/robot_nav/install" TYPE FILE FILES "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/setup.sh")
+file(INSTALL DESTINATION "/home/sweet/github_store/robot_nav/install" TYPE FILE FILES
+    "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/setup.sh"
+    "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/local_setup.sh"
+    )
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
-   "/home/sweet/github_store/robot_nav/install/setup.zsh")
+   "/home/sweet/github_store/robot_nav/install/setup.zsh;/home/sweet/github_store/robot_nav/install/local_setup.zsh")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/home/sweet/github_store/robot_nav/install" TYPE FILE FILES "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/setup.zsh")
+file(INSTALL DESTINATION "/home/sweet/github_store/robot_nav/install" TYPE FILE FILES
+    "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/setup.zsh"
+    "/home/sweet/github_store/robot_nav/build/catkin_generated/installspace/local_setup.zsh"
+    )
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -123,6 +132,11 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/sweet/github_store/robot_nav/build/gtest/cmake_install.cmake")
   include("/home/sweet/github_store/robot_nav/build/base_controller/cmake_install.cmake")
+  include("/home/sweet/github_store/robot_nav/build/robot_arm_interface/cmake_install.cmake")
+  include("/home/sweet/github_store/robot_nav/build/rob_control/cmake_install.cmake")
+  include("/home/sweet/github_store/robot_nav/build/robot_arm/cmake_install.cmake")
+  include("/home/sweet/github_store/robot_nav/build/robot_arm_config/cmake_install.cmake")
+  include("/home/sweet/github_store/robot_nav/build/pr2_moveit_generated/cmake_install.cmake")
 
 endif()
 

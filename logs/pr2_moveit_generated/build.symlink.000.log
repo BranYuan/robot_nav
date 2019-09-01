@@ -1,0 +1,3 @@
+Symlinking /home/sweet/github_store/robot_nav/devel/lib/pkgconfig/pr2_moveit_generated.pc
+Symlinking /home/sweet/github_store/robot_nav/devel/share/pr2_moveit_generated/cmake/pr2_moveit_generatedConfig-version.cmake
+Symlinking /home/sweet/github_store/robot_nav/devel/share/pr2_moveit_generated/cmake/pr2_moveit_generatedConfig.cmake

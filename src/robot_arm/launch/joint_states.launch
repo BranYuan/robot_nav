@@ -1,0 +1,10 @@
+<launch>
+  <arg
+    name="model" />
+  <arg
+    name="gui"
+    default="True" />
+  <param
+    name="use_gui"
+    value="$(arg gui)" />
+</launch>

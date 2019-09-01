@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="rob_control" name="rob_control" type="arm_controller.py" output="screen">
+	</node>
+</launch>
