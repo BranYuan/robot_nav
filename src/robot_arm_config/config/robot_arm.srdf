@@ -29,6 +29,22 @@
         <joint name="joint5" value="0" />
         <joint name="joint6" value="0" />
     </group_state>
+    <group_state name="home_joints" group="arm">
+        <joint name="joint1" value="1.556" />
+        <joint name="joint2" value="0.997" />
+        <joint name="joint3" value="0.6674" />
+        <joint name="joint4" value="0.111" />
+        <joint name="joint5" value="1.6799" />
+        <joint name="joint6" value="0" />
+    </group_state>
+    <group_state name="medium_joints" group="arm">
+        <joint name="joint1" value="-0.343" />
+        <joint name="joint2" value="1.538" />
+        <joint name="joint3" value="-0.0879" />
+        <joint name="joint4" value="0.0726" />
+        <joint name="joint5" value="1.3759" />
+        <joint name="joint6" value="0" />
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="gripper" parent_link="link6" group="gripper" parent_group="arm" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->

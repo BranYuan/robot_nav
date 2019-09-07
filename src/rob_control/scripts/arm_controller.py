@@ -224,7 +224,7 @@ def set_goal_loop():
     home_work_joints = [radians(i) for i in [-90,75.795,-24.434,5.566,-33.123,0]]
     # 关节值对应的POSE
     home_pose = cal_pose(0.0333, 0.848, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
-    release_pose = cal_pose(0.0333, 0.848, 0.07, 0.99829, 0.01759, 0.05479, 0.00994)
+    release_pose = cal_pose(0.0333, 0.848, -0.1, 0.99829, 0.01759, 0.05479, 0.00994)
     medium_pose = cal_pose(0.50435, -0.22916, 0.34435, -0.56995, 0.82005, -0.00978, 0.05071)
     home_work_pose = cal_pose(0.0, -0.99398, 0.18418, 0.03735, 0.76177, -0.64627, 0.02561)
     # 初始化目标位置 
@@ -308,34 +308,39 @@ def set_goal_loop():
             goal.position.y = GOAL_POSITION[1]
             goal.position.z = GOAL_POSITION[2]
             try:
-                traj_go, traj_back = get_goal_traj(arm, goal, 'z', 1)
+                traj_go, traj_back = get_goal_traj(arm, goal, 'y', 1)
                 traj_go = traj_go.joint_trajectory
                 traj_back = traj_back.joint_trajectory
                 print 'go to goal '
                 # 到目标点
-                write_coil(COIL_Y15, GRIPPER_ON)                
+                write_coil(COIL_Y15, GRIPPER_ON)
                 while not execute_trajectory(traj_go):
                     pass
+                rospy.sleep(9)
                 write_coil(COIL_Y15, GRIPPER_OFF)                
-                rospy.sleep(2)
+                rospy.sleep(1.5)
                 # 回工作原点
+                print('go back to work home')
                 while not execute_trajectory(traj_back):
                     pass
                 # 抓取目标成功标志
                 GOAL_FLAG = 2
                 # 到home点 
+                print('go home')
                 while not execute_trajectory(traj_work_to_home):
                     pass
                 # 存储位
+                print('go to  release')
                 while not execute_trajectory(traj_release_goals[i]):
                     pass
+                rospy.sleep(4)
                 write_coil(COIL_Y15, GRIPPER_ON)
-                rospy.sleep(2)
                 # 回home点
+                print('go home')
                 while not execute_trajectory(traj_release_backs[i]):
                     pass
-                write_coil(COIL_Y15, GRIPPER_OFF)
                 # 到工作原点
+                print('go  to work')
                 while not execute_trajectory(traj_home_to_work):
                     pass
                 print 'Done'
@@ -367,7 +372,7 @@ def get_goal_traj(arm, goal, axis = 'y', direction = -1):
         # 设置机械臂终端运动的目标位姿
         arm.set_pose_target(goal_temp)
         traj = arm.plan()
-        del traj.joint_trajectory.points[1:-1]
+        del traj.joint_trajectory.points[0:-1]
         # 设置机械臂终端运动目标位姿的安全位姿
         if axis == 'x':
             goal_temp.position.x += (0.1*direction)
