@@ -26,27 +26,27 @@ import minimalmodbus as modbus
 
 
 G_JOINT_MSG = JointState()
-SER_ARM = modbus.Instrument(port='/dev/ttyS6', slaveaddress=2)
+SER_ARM = modbus.Instrument(port='/dev/ttyS5', slaveaddress=2)
 
 G_JOINTS = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
 G_POSITION = [radians(i) for i in [-11.686,64.865,-15.943,55.433,47.906,-21.150]]
 
-G_SER_IN_USE = 0 # 判断串口是否被进程占用
-HOME_FLAG = False # 机器人在原点标志
-AUTO_FLAG = False # 自动采摘有效标志
+G_SER_IN_USE = 0  # 判断串口是否被进程占用
+HOME_FLAG = False  # 机器人在原点标志
+AUTO_FLAG = False  # 自动采摘有效标志
 
-DEGREE_OFFSET = 400 # 机器人寄存器不能写入负数，故角度偏移400
+DEGREE_OFFSET = 400  # 机器人寄存器不能写入负数，故角度偏移400
 DEGREE_RATIO = 10        # 角度放大比例
 DEBUG = False
 
-GRIPPER_ON = 1 # 夹抓打开
-GRIPPER_OFF = 0 # 夹抓关闭
+GRIPPER_ON = 1  # 夹抓打开
+GRIPPER_OFF = 0  # 夹抓关闭
 
-GOAL_SIZE = 0.08 # 梨的尺寸
-GOAL_POSITION = [0.0, -0.99398, 0.18418] # 梨目标所在位置
-GOAL_FLAG = -1 # 是否有目标传入标志,1:目标传入，2:机械手抓取成功，3:抓取失败,0:待机械手准备好
+GOAL_SIZE = 0.06  # 梨的尺寸
+GOAL_POSITION = [0.0, -0.99398, 0.18418]  # 梨目标所在位置
+GOAL_FLAG = -1  # 是否有目标传入标志,1:目标传入，2:机械手抓取成功，3:抓取失败,0:待机械手准备好
 
-#寄存器地址
+# 寄存器地址
 ARM_READY_REG = 100
 POINT1_OK_REG = 101
 POINT2_OK_REG = 102
@@ -55,8 +55,6 @@ POINT_CUR_REG = 107
 POINT1_START_REG = 113
 POINT2_START_REG = 119
 COIL_Y15 = 0x0F
-
-
 
 def arm_init():
     global G_SER_IN_USE
@@ -95,7 +93,7 @@ def arm_init():
     serial_thread = threading.Thread(target=serial_loop, name='SerialThread')
     # socket处理线程
     socket_thread = threading.Thread(target=socket_loop, name='SocketThread')
-    #定义并启动发布者多线程
+    # 定义并启动发布者多线程
     pup_thread = threading.Thread(target=pup_thread_loop,args = (pup,), name='PubLoopThread')
     # 控制器线程
     act_server_thread = threading.Thread(target=act_server_thread_loop, name='ActLoopThread') 
@@ -115,6 +113,7 @@ def arm_init():
     set_goal_thread.join()
     # rospy.spin()
 
+
 def pup_thread_loop(pup):
     # 发布者线程主循环
     # pup = rospy.Publisher('joint_states', JointState, queue_size = 5)
@@ -124,6 +123,7 @@ def pup_thread_loop(pup):
         pup.publish(G_JOINT_MSG)
         rospy.sleep(0.1)
 
+
 def act_server_thread_loop():
     # arm_controller server线程主循环
     FollowController()
@@ -132,6 +132,7 @@ def act_server_thread_loop():
 
 def socket_loop():
     server_main()
+
 
 def serial_loop():
     ## 串口命令处理进程
@@ -223,7 +224,7 @@ def set_goal_loop():
     medium_joints = [radians(i) for i in [-19.654,88.135,-5.039,4.160,78.831,0]]
     home_work_joints = [radians(i) for i in [-90,75.795,-24.434,5.566,-33.123,0]]
     # 关节值对应的POSE
-    home_pose = cal_pose(0.0333, 0.848, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
+    home_pose = cal_pose(0.0333, 0.648, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
     release_pose = cal_pose(0.0333, 0.848, -0.1, 0.99829, 0.01759, 0.05479, 0.00994)
     medium_pose = cal_pose(0.50435, -0.22916, 0.34435, -0.56995, 0.82005, -0.00978, 0.05071)
     home_work_pose = cal_pose(0.0, -0.99398, 0.18418, 0.03735, 0.76177, -0.64627, 0.02561)
@@ -237,9 +238,9 @@ def set_goal_loop():
     release_list.append(copy.deepcopy(release))
     for i in range(1, 5):
         for i in range(1, 5):
-            release.position.x += 1.5 * GOAL_SIZE
+            release.position.x += 1.2 * GOAL_SIZE
             release_list.append(copy.deepcopy(release))
-        release.position.y -= 1.5 * GOAL_SIZE
+        release.position.y -= 1.2 * GOAL_SIZE
         release.position.x = x
     
     # home点到work点路径点
@@ -251,7 +252,7 @@ def set_goal_loop():
     traj_home_to_work = cal_cartesian_path(arm, way_point_home_to_work)
     traj_home_to_work = traj_home_to_work.joint_trajectory
     # 缩减路径点密集度
-    decrease_traj_len(traj_home_to_work, 10)
+    decrease_traj_len(traj_home_to_work, 15)
     # 笛卡尔路径规划 work to home
     traj_work_to_home = (copy.deepcopy(traj_home_to_work))
     traj_work_to_home.points.reverse()
@@ -316,7 +317,6 @@ def set_goal_loop():
                 write_coil(COIL_Y15, GRIPPER_ON)
                 while not execute_trajectory(traj_go):
                     pass
-                rospy.sleep(9)
                 write_coil(COIL_Y15, GRIPPER_OFF)                
                 rospy.sleep(1.5)
                 # 回工作原点
@@ -333,7 +333,6 @@ def set_goal_loop():
                 print('go to  release')
                 while not execute_trajectory(traj_release_goals[i]):
                     pass
-                rospy.sleep(4)
                 write_coil(COIL_Y15, GRIPPER_ON)
                 # 回home点
                 print('go home')
@@ -372,7 +371,7 @@ def get_goal_traj(arm, goal, axis = 'y', direction = -1):
         # 设置机械臂终端运动的目标位姿
         arm.set_pose_target(goal_temp)
         traj = arm.plan()
-        del traj.joint_trajectory.points[0:-1]
+        del traj.joint_trajectory.points[1:-1]
         # 设置机械臂终端运动目标位姿的安全位姿
         if axis == 'x':
             goal_temp.position.x += (0.1*direction)
@@ -519,9 +518,8 @@ def decrease_traj_len(traj, step):
     traj.points = l_temp
     print 'decreased length is : '+ str(len(traj.points))
 
-
-
 def kill_process(port = 50008):
+    ## 关闭目标端口相关线程函数
     ret = os.popen('netstat -nao|findstr' + str(port))
     str_list = ret.read().decode('gbk')
     ret_list = re.split('', str_list)
@@ -530,6 +528,7 @@ def kill_process(port = 50008):
         os.popen('taskkill /pid ' + str(process_pid) + ' /F')
     except:
         return True
+
 def server_main():
     ## socket线程主循环，接收来自视觉的目标请求命令
     global GOAL_POSITION
@@ -615,7 +614,7 @@ def server_main():
 
 
 # 执行轨迹
-def execute_trajectory(traj):
+def execute_trajectory(traj, tolerance = 0.02):
     rospy.loginfo('Executing trajectory')
     rospy.logdebug(traj)
     
@@ -634,7 +633,7 @@ def execute_trajectory(traj):
         s_time = rospy.Time.now()
         timeout = 0
         read1_flag = read_reg(POINT1_OK_REG)
-        read2_flag = read_reg(POINT1_OK_REG)
+        read2_flag = read_reg(POINT2_OK_REG)
         # print str(read1_flag) + '========' + str(read2_flag)
         # 调试模式
         if DEBUG:
@@ -656,22 +655,66 @@ def execute_trajectory(traj):
                 return False
             read1_flag = read_reg(POINT1_OK_REG)
             read2_flag = read_reg(POINT2_OK_REG)
+            # 调试模式
             if DEBUG:
                 read1_flag = not read1_flag
                 read2_flag = not read2_flag
+                
 
-        point = traj.points[i]
         # 轨迹点长度为奇数，且是最后一个
+        point = traj.points[i]
+        joints = [point.positions[j] for j in indexes]
         if  not read1_flag:
+            point = traj.points[i]
+            joints = [point.positions[j] for j in indexes]
             # print 'write point1=========='
-            write_joints(POINT1_START_REG, point, indexes)
-            write_reg(POINT1_OK_REG,1)
+            while not write_joints(POINT1_START_REG, point, indexes):
+                pass
+            while not write_reg(POINT1_OK_REG,1):
+                pass
+            print(joints)
+            arrival_flag = False    # 机器人但前位置是否到达目标位置标志
+            while not arrival_flag:
+                ##  等待机器人到达目标位置
+                current_joints = read_joints(current_position_reg, 6)
+                # print('Wait robot go to goal joints')
+                # print(current_joints)
+                for j in range(len(joints)):
+                    if current_joints == None:
+                        break
+                    ## 判断机器人是否到达目标位置
+                    if abs(current_joints[j]-joints[j]) > tolerance:
+                        # 判断机器人目标位置是否在公差内
+                        arrival_flag = False
+                        break
+                    else:
+                        arrival_flag = True
             i+=1
         elif (not read2_flag) and i < len_trajs:
             # print 'write point2========='
             point = traj.points[i]
-            write_joints(POINT2_START_REG, point, indexes)
-            write_reg(POINT2_OK_REG,1)
+            joints = [point.positions[j] for j in indexes]
+            while not write_joints(POINT2_START_REG, point, indexes):
+                pass
+            while not write_reg(POINT2_OK_REG,1):
+                pass
+            print(joints)
+            arrival_flag = False    # 机器人但前位置是否到达目标位置标志
+            while not arrival_flag:
+                ##  等待机器人到达目标位置
+                current_joints = read_joints(current_position_reg, 6)
+                # print('Wait robot go to goal joints')
+                # print(current_joints)
+                for k in range(len(joints)):
+                    if current_joints == None:
+                        break
+                    ## 判断机器人是否到达目标位置
+                    if abs(current_joints[k]-joints[k]) > tolerance:
+                        # 判断机器人目标位置是否在公差内
+                        arrival_flag = False
+                        break
+                    else:
+                        arrival_flag = True
             i+=1
         e_time = rospy.Time.now()
         # print 'whole loop time is :' + str(e_time - s_time)
