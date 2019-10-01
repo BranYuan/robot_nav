@@ -1,0 +1,96 @@
+
+
+while True: 
+        # 标定用点
+        position1 = [radians(i) for i in [-107.091, 74.129, 5.459, -0.004, 79.588, 31.548]]
+        position2 = [radians(i) for i in [-115.371, 51.618, -5.883, -0.004, 45.725, 23.27]]
+        position3 = [radians(i) for i in [-134.742, 43.704, 33.496, 0.000, 77.190, 3.897]]
+        G_JOINT_MSG.position = position1
+        print('first position')
+        rospy.sleep(10)
+        G_JOINT_MSG.position = position2
+        print('second position')
+        rospy.sleep(10)
+        G_JOINT_MSG.position = position3
+        print('third position')
+        rospy.sleep(10)
+
+
+
+position1 = [radians(i) for i in [-107.091, 74.129, 5.459, -0.004, 79.588, 31.548]]
+
+joints = [-1.86909054925 1.29379512121 0.0952775238664 -6.98131700798e-05 1.38907264508 0.550616472419]
+link6 pose = [
+header: 
+  seq: 0
+  stamp: 
+    secs: 1569050127
+    nsecs: 264136075
+  frame_id: "base_link"
+pose: 
+  position: 
+    x: -0.25268971163
+    y: -0.820511445067
+    z: 0.239448450265
+  orientation: 
+    x: -0.412546007228
+    y: -0.910936765484
+    z: -3.03759018826e-06
+    w: 3.46516147932e-05 ]
+
+
+link6 RPY = [-3.1415695969242496, -6.563715125155696e-05, 2.2910981879343653]
+
+
+
+
+
+position2 = [radians(i) for i in [-115.371, 51.618, -5.883, -0.004, 45.725, 23.27]]
+
+
+joints = [-2.01360381132 0.900904053294 -0.102677719895 -6.98131700798e-05 0.798051800474 0.406138116939]
+link6 pose = [
+header: 
+  seq: 0
+  stamp: 
+    secs: 1569050133
+    nsecs:  17263889
+  frame_id: "base_link"
+pose: 
+  position: 
+    x: -0.39162538084
+    y: -0.824739567392
+    z: -0.23538602972
+  orientation: 
+    x: -0.412545902987
+    y: -0.910936809542
+    z: 7.9451736622e-05
+    w: 2.52375599559e-05 ]
+link6 RPY = [-3.1414270792621406, 1.957533216468591e-05, 2.2910984165778845]
+
+
+
+
+position3 = [radians(i) for i in [-134.742, 43.704, 33.496, 0.000, 77.190, 3.897]]
+
+joints = [-2.35169154072 0.762778696292 0.584615486248 0.0 1.34721964961 0.0680154809502]
+link6 pose = [
+header: 
+  seq: 0
+  stamp: 
+    secs: 1569050142
+    nsecs:   8904933
+  frame_id: "base_link"
+pose: 
+  position: 
+    x: -0.816849635051
+    y: -0.823030719479
+    z: 0.0266529172954
+  orientation: 
+    x: -0.412551766968
+    y: -0.910934154143
+    z: 7.50167878066e-05
+    w: 2.75655944188e-05 ]
+link6 RPY = [-3.1414332384114427, 1.1675733853441042e-05, 2.2910855415056535]
+
+

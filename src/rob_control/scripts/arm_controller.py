@@ -159,8 +159,19 @@ def serial_loop():
         except:
             pass
     print('start serial loop')
+    delta_time = 0.0
+    start_time = time.time()
     while not rospy.is_shutdown():
         try:
+            # 心跳检测计时处理,心跳间隔2S
+            delta_time = time.time()-start_time
+            if delta_time > 2.0:
+                start_time = time.time()
+                if not ser.serial.isOpen():
+                    ser.open_port()
+                if ser.serial.isOpen():
+                    ser.send_cmd('*STOP#')
+
             cmd_data = None
             if ser_4G.serial.isOpen():
                 while not ser_4G.serial.inWaiting():
@@ -187,6 +198,8 @@ def serial_loop():
                             G_JOINT_MSG.position = init_position
                         elif cmd_data == '*DEBUG_OFF#':
                             DEBUG = False
+                        elif cmd_data == '*BOOM#':
+                            start_time = time.time()
                     except:
                         print('cmd err')
         except:
@@ -223,6 +236,8 @@ def set_goal_loop():
     release_joints = [radians(i) for i in [89.154,50.331,13.980,-6.95,65.4,0]]
     medium_joints = [radians(i) for i in [-19.654,88.135,-5.039,4.160,78.831,0]]
     home_work_joints = [radians(i) for i in [-90,75.795,-24.434,5.566,-33.123,0]]
+
+    
     # 关节值对应的POSE
     home_pose = cal_pose(0.0333, 0.648, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
     release_pose = cal_pose(0.0333, 0.848, -0.1, 0.99829, 0.01759, 0.05479, 0.00994)
@@ -242,7 +257,14 @@ def set_goal_loop():
             release_list.append(copy.deepcopy(release))
         release.position.y -= 1.2 * GOAL_SIZE
         release.position.x = x
-    
+    '''
+    # 标定点
+    point1 = [radians(i) for i in [-103.476, 19.573, 66.241, -2.245, 94.954, 35.134]]
+    while True:
+        G_JOINT_MSG.position = point1
+        rospy.sleep(10)
+        print("Current arm position is point1")
+    '''
     # home点到work点路径点
     way_point_home_to_work = [home_pose, medium_pose]# , home_work_pose]
     # 笛卡尔路径规划，home to work
@@ -252,7 +274,7 @@ def set_goal_loop():
     traj_home_to_work = cal_cartesian_path(arm, way_point_home_to_work)
     traj_home_to_work = traj_home_to_work.joint_trajectory
     # 缩减路径点密集度
-    decrease_traj_len(traj_home_to_work, 15)
+    decrease_traj_len(traj_home_to_work, 30)
     # 笛卡尔路径规划 work to home
     traj_work_to_home = (copy.deepcopy(traj_home_to_work))
     traj_work_to_home.points.reverse()
@@ -283,9 +305,7 @@ def set_goal_loop():
             rospy.sleep(2)
         G_JOINT_MSG.position = current_joints
         # print ([degrees(i) for i in current_joints])
-
-    
-    '''
+    ''' 
     while not traj:
         traj = cal_multi_point_traj(arm, way_work_home)
         print 'Repanning way from work to home'
@@ -614,10 +634,10 @@ def server_main():
 
 
 # 执行轨迹
-def execute_trajectory(traj, tolerance = 0.02):
+def execute_trajectory(traj, tolerance = 0.05):
     rospy.loginfo('Executing trajectory')
     rospy.logdebug(traj)
-    
+    time_out = 20.0
     # 取出轨迹
     try:
         indexes = [traj.joint_names.index(joint)
@@ -630,8 +650,7 @@ def execute_trajectory(traj, tolerance = 0.02):
     G_SER_IN_USE = 1
     i = 0
     while i <len_trajs:
-        s_time = rospy.Time.now()
-        timeout = 0
+        s_time = time.time()
         read1_flag = read_reg(POINT1_OK_REG)
         read2_flag = read_reg(POINT2_OK_REG)
         # print str(read1_flag) + '========' + str(read2_flag)
@@ -642,16 +661,16 @@ def execute_trajectory(traj, tolerance = 0.02):
             current_position_reg = POINT1_START_REG
         else:
             current_position_reg = POINT_CUR_REG
+        s_time = time.time()
         while read1_flag and read2_flag:
             ## 等待点1和点2中一个寄存器准备好接收关节值
-            timeout +=0.01
             rospy.sleep(0.01)
             # 读机器人当前位姿POINT_CUR_REG
             current_joints = read_joints(current_position_reg, 6)
             if current_joints:
                 G_JOINT_MSG.header.stamp = rospy.Time.now()
                 G_JOINT_MSG.position = current_joints
-            if timeout > 30 or read1_flag == None or read2_flag == None:
+            if (time.time()-s_time) > time_out or read1_flag == None or read2_flag == None:
                 return False
             read1_flag = read_reg(POINT1_OK_REG)
             read2_flag = read_reg(POINT2_OK_REG)
@@ -668,17 +687,23 @@ def execute_trajectory(traj, tolerance = 0.02):
             point = traj.points[i]
             joints = [point.positions[j] for j in indexes]
             # print 'write point1=========='
+            s_time = time.time()
             while not write_joints(POINT1_START_REG, point, indexes):
-                pass
+                if time.time() - s_time > time_out:
+                    break
+            s_time = time.time()
             while not write_reg(POINT1_OK_REG,1):
-                pass
+                if time.time() - s_time > time_out:
+                    break
             print(joints)
             arrival_flag = False    # 机器人但前位置是否到达目标位置标志
+            s_time = time.time()
             while not arrival_flag:
                 ##  等待机器人到达目标位置
                 current_joints = read_joints(current_position_reg, 6)
-                # print('Wait robot go to goal joints')
-                # print(current_joints)
+                print('Wait robot go to goal joints')
+                print(current_joints)
+                print(joints)
                 for j in range(len(joints)):
                     if current_joints == None:
                         break
@@ -689,22 +714,30 @@ def execute_trajectory(traj, tolerance = 0.02):
                         break
                     else:
                         arrival_flag = True
+                if time.time() - s_time > time_out:
+                    break
             i+=1
         elif (not read2_flag) and i < len_trajs:
             # print 'write point2========='
             point = traj.points[i]
             joints = [point.positions[j] for j in indexes]
+            s_time = time.time()
             while not write_joints(POINT2_START_REG, point, indexes):
-                pass
+                if time.time() - s_time > time_out:
+                    break
+            s_time = time.time()
             while not write_reg(POINT2_OK_REG,1):
-                pass
+                if time.time() - s_time > time_out:
+                    break
             print(joints)
             arrival_flag = False    # 机器人但前位置是否到达目标位置标志
+            s_time = time.time()
             while not arrival_flag:
                 ##  等待机器人到达目标位置
                 current_joints = read_joints(current_position_reg, 6)
-                # print('Wait robot go to goal joints')
-                # print(current_joints)
+                print('Wait robot go to goal joints')
+                print(current_joints)
+                print(joints)
                 for k in range(len(joints)):
                     if current_joints == None:
                         break
@@ -715,9 +748,9 @@ def execute_trajectory(traj, tolerance = 0.02):
                         break
                     else:
                         arrival_flag = True
+                if time.time() - s_time > time_out:
+                    break
             i+=1
-        e_time = rospy.Time.now()
-        # print 'whole loop time is :' + str(e_time - s_time)
     G_SER_IN_USE = 0
     return True
 
