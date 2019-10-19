@@ -11,6 +11,7 @@ import socket
 import os
 import re
 import time
+import random
 import moveit_commander
 import moveit_msgs.msg
 from moveit_msgs.msg import RobotState
@@ -38,13 +39,16 @@ AUTO_FLAG = False  # 自动采摘有效标志
 DEGREE_OFFSET = 400  # 机器人寄存器不能写入负数，故角度偏移400
 DEGREE_RATIO = 10        # 角度放大比例
 DEBUG = False
-
+DEBUG_EYE = False       #机器人摄像头调试时，只运行到达目标点
 GRIPPER_ON = 1  # 夹抓打开
 GRIPPER_OFF = 0  # 夹抓关闭
 
 GOAL_SIZE = 0.06  # 梨的尺寸
 GOAL_POSITION = [0.0, -0.99398, 0.18418]  # 梨目标所在位置
+GOAL_POSE = [0.04853,0.73941,-0.67147,0.00716] # 目标位姿，默认标定位姿
+GOAL_POSE_CALIBRATION = [0.04853,0.73941,-0.67147,0.00716] # 目标位姿，默认标定位姿
 GOAL_FLAG = -1  # 是否有目标传入标志,1:目标传入，2:机械手抓取成功，3:抓取失败,0:待机械手准备好
+CALIBRATION_FLAG = False # 自动标定程序标志
 
 # 寄存器地址
 ARM_READY_REG = 100
@@ -93,6 +97,8 @@ def arm_init():
     serial_thread = threading.Thread(target=serial_loop, name='SerialThread')
     # socket处理线程
     socket_thread = threading.Thread(target=socket_loop, name='SocketThread')
+    # socket dubug 线程
+    socket_debug_thread = threading.Thread(target=socket_debug_loop, name='SocketThread')
     # 定义并启动发布者多线程
     pup_thread = threading.Thread(target=pup_thread_loop,args = (pup,), name='PubLoopThread')
     # 控制器线程
@@ -102,12 +108,16 @@ def arm_init():
 
     serial_thread.start()
     socket_thread.start()
+    print('socket')
+    # socket_debug_thread.start()
+    print('socket_debug')
     pup_thread.start()
     act_server_thread.start()
     set_goal_thread.start()
     print 'start thread'
     serial_thread.join()
     socket_thread.join()
+    # socket_debug_thread.join()
     pup_thread.join()
     act_server_thread.join()
     set_goal_thread.join()
@@ -133,6 +143,8 @@ def act_server_thread_loop():
 def socket_loop():
     server_main()
 
+def socket_debug_loop():
+    server_debug()
 
 def serial_loop():
     ## 串口命令处理进程
@@ -239,10 +251,10 @@ def set_goal_loop():
 
     
     # 关节值对应的POSE
-    home_pose = cal_pose(0.0333, 0.648, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
+    home_pose = cal_pose(0.0333, 0.848, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
     release_pose = cal_pose(0.0333, 0.848, -0.1, 0.99829, 0.01759, 0.05479, 0.00994)
     medium_pose = cal_pose(0.50435, -0.22916, 0.34435, -0.56995, 0.82005, -0.00978, 0.05071)
-    home_work_pose = cal_pose(0.0, -0.99398, 0.18418, 0.03735, 0.76177, -0.64627, 0.02561)
+    home_work_pose = cal_pose(0.0, -0.6398, 0.18418, 0.03735, 0.76177, -0.64627, 0.02561)
     # 初始化目标位置 
     goal = copy.deepcopy(home_work_pose)
     # 目标物存储位置
@@ -274,7 +286,7 @@ def set_goal_loop():
     traj_home_to_work = cal_cartesian_path(arm, way_point_home_to_work)
     traj_home_to_work = traj_home_to_work.joint_trajectory
     # 缩减路径点密集度
-    decrease_traj_len(traj_home_to_work, 30)
+    decrease_traj_len(traj_home_to_work, 60)
     # 笛卡尔路径规划 work to home
     traj_work_to_home = (copy.deepcopy(traj_home_to_work))
     traj_work_to_home.points.reverse()
@@ -328,8 +340,19 @@ def set_goal_loop():
             goal.position.x = GOAL_POSITION[0]
             goal.position.y = GOAL_POSITION[1]
             goal.position.z = GOAL_POSITION[2]
+            if CALIBRATION_FLAG:
+                goal_calibration = copy.deepcopy(goal)
+                goal_calibration.position.ax = GOAL_POSE_CALIBRATION[0]
+                goal_calibration.position.ay = GOAL_POSE_CALIBRATION[1]
+                goal_calibration.position.az = GOAL_POSE_CALIBRATION[2]
+                goal_calibration.position.w = GOAL_POSE_CALIBRATION[3]
+                goal_temp = goal_calibration
+            else:
+                goal_temp = goal
+
+
             try:
-                traj_go, traj_back = get_goal_traj(arm, goal, 'y', 1)
+                traj_go, traj_back = get_goal_traj(arm, goal_temp, 'y', 1)
                 traj_go = traj_go.joint_trajectory
                 traj_back = traj_back.joint_trajectory
                 print 'go to goal '
@@ -337,14 +360,21 @@ def set_goal_loop():
                 write_coil(COIL_Y15, GRIPPER_ON)
                 while not execute_trajectory(traj_go):
                     pass
+                # 抓取目标成功标志
+                GOAL_FLAG = 2
+                if CALIBRATION_FLAG:
+                    # 自动标定
+                    break
                 write_coil(COIL_Y15, GRIPPER_OFF)                
                 rospy.sleep(1.5)
                 # 回工作原点
                 print('go back to work home')
                 while not execute_trajectory(traj_back):
                     pass
-                # 抓取目标成功标志
-                GOAL_FLAG = 2
+                if DEBUG_EYE:
+                    # 机器人摄像头调试模式开启，只运行到目标点和回原点
+                    execute_trajectory(traj_to_work_home)
+                    break
                 # 到home点 
                 print('go home')
                 while not execute_trajectory(traj_work_to_home):
@@ -396,7 +426,7 @@ def get_goal_traj(arm, goal, axis = 'y', direction = -1):
         if axis == 'x':
             goal_temp.position.x += (0.1*direction)
         elif axis == 'y':
-            goal_temp.position.y += (0.1*direction)
+            goal_temp.position.y += (0.2*direction)
         elif axis == 'z':
             goal_temp.position.z += (0.1*direction)
 
@@ -553,13 +583,15 @@ def server_main():
     ## socket线程主循环，接收来自视觉的目标请求命令
     global GOAL_POSITION
     global GOAL_FLAG
+    global GOAL_POSE
 
     host = '0.0.0.0'
     port = 50008
     kill_process()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
-    s.listen(10)
+    s.listen(10) 
     while not rospy.is_shutdown():
         # 等待CLIENT连接
         try:
@@ -586,6 +618,12 @@ def server_main():
             s_end = data.rfind('#')
             if s_end > s_head:
                 data = data[s_head+1:s_end]
+                if data == 'debug_eye_on':
+                    DEBUG_EYE = True
+                    print('debug_eye: ' + str(DEBUG_EYE))
+                elif data == 'debug_eye_off':
+                    DEBUG_EYE = False
+                    print('debug_eye: ' + str(DEBUG_EYE))
                 data = data.split(',')
             else:
                 data = None
@@ -630,6 +668,98 @@ def server_main():
             except:
                 kill_process()
 
+
+def server_debug():
+    ## socket线程主循环，接收来自视觉的目标请求命令,用于自动标定
+    global GOAL_POSITION
+    global GOAL_FLAG
+    global GOAL_POSE
+    global GOLA_POSE_CALIBRATION
+    global CALIBRATION_FLA
+    x_min = -79
+    x_max = -11
+    y_min = -86
+    y_max = -79
+    z_min = -79
+    z_max = 17
+    host = '0.0.0.0'
+    port = 50009
+    kill_process(50009)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((host, port))
+    s.listen(10) 
+    while not rospy.is_shutdown():
+        # 等待CLIENT连接
+        try:
+            print('Waitting for socket calibration client')
+            conn, addr = s.accept()
+            if addr:
+                break
+        except:
+            pass
+    goal_err = False
+
+    while not GOAL_FLAG == 0:
+        ## 等待机械手初始化完成
+        print('Waitting for arm init')
+        print(str(GOAL_FLAG))
+        time.sleep(2)
+    while not rospy.is_shutdown():
+        ## 主循环
+        try:
+            ## 接收并GOAL_POSITION = [0.0, -0.99398, 0.18418] # 梨目标所在位置
+            data = conn.recv(1024)
+            print(data)
+            s_head = data.rfind('*')
+            s_end = data.rfind('#')
+            if s_end > s_head:
+                data = data[s_head+1:s_end]
+                print(data)
+            else:
+                data = None
+
+            if data == 'calibration_on':
+                CALIBRATION_FLAG = True
+                conn.sendall('*calibration_on#')
+            elif data == 'calibration_off':
+                CALIBRATION_FLAG = False
+                conn.sendall('*calibration_off#')
+            elif data == 'EYE_DEBUG_ON':
+                DEBUG_EYE = True
+                conn.sendall('*calibration_off#')
+            elif data == 'EYE_DEBUG_OFF':
+                DEBUG_EYE = False
+                conn.sendall('*calibration_off#')
+            elif data == 'req_point':
+                # 返回收到合法data
+                conn.sendall('*received#')
+                
+                GOAL_POSITION[0] = random.randint(x_min,x_max)/1000.0
+                GOAL_POSITION[1] = random.randint(y_min,y_max)/1000.0
+                GOAL_POSITION[2] = random.randint(z_min,z_max)/1000.0
+                GOAL_FLAG = 1
+                while GOAL_FLAG == 1:
+                    # 等待机械手执行目标结果
+                    time.sleep(2)
+                if GOAL_FLAG == 2:
+                    # 返回目标抓取结果
+                    conn.sendall('*' + str(GOAL_POSITION[0]) + ',' + str(GOAL_POSITION[1]) + ','+ str(GOAL_POSITION[2]) + '#')
+                elif GOAL_FLAG == 3:
+                    conn.sendall('*failed#')
+        except:
+            ## 如果出错重新监听
+            kill_process()
+            print 'err'
+            try:
+                s = None
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.bind((host, port))
+                s.listen(1)
+                conn, addr = s.accept()
+                goal_err = True
+            except:
+                kill_process()
 
 
 
