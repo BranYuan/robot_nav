@@ -106,14 +106,16 @@ def arm_init():
     # 设置目标位置线程
     set_goal_thread = threading.Thread(target=set_goal_loop, name='SetGoalThread') 
 
-    # serial_thread.start()
+    serial_thread.start()
     socket_thread.start()
+    print('socket')
     # socket_debug_thread.start()
+    print('socket_debug')
     pup_thread.start()
     act_server_thread.start()
     set_goal_thread.start()
     print 'start thread'
-    # serial_thread.join()
+    serial_thread.join()
     socket_thread.join()
     # socket_debug_thread.join()
     pup_thread.join()
@@ -242,17 +244,17 @@ def set_goal_loop():
     # traj = cal_multi_point_traj(arm, way_work_home)
 
     # 各固定点初始化
-    home_joints = [1.30, 1.82, -0.41, 0.0, 1.42, 0.0]
-    release_joints = [radians(i) for i in [89.154, 50.331, 13.980, -6.95, 65.4, 0]]
-    medium_joints = [radians(i) for i in [-19.654, 88.135, -5.039, 4.160, 78.831, 0]]
-    work_joints = [-2.39, 1.36, -0.88, -0.64, -1.03, 0]
-    # 关节值对应的POSE
-    home_pose = cal_pose(0.1344, 0.4848, 0.2585, 0.9907, -0.1358, -0.0007, 0.0050)
-    # home_pose = cal_pose(0.0333, 0.848, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
+    home_joints = [radians(i) for i in [89.156,57.127,38.238,-6.354,96.253,0]]
+    release_joints = [radians(i) for i in [89.154,50.331,13.980,-6.95,65.4,0]]
+    medium_joints = [radians(i) for i in [-19.654,88.135,-5.039,4.160,78.831,0]]
+    home_work_joints = [radians(i) for i in [-90,75.795,-24.434,5.566,-33.123,0]]
 
-    release_pose = cal_pose(0.0333, 0.848, -0.0, 0.99829, 0.01759, 0.05479, 0.00094)
+    
+    # 关节值对应的POSE
+    home_pose = cal_pose(0.0333, 0.848, 0.34435, 0.99835, -0.01376, 0.05507, 0.00819)
+    release_pose = cal_pose(0.0333, 0.848, -0.1, 0.99829, 0.01759, 0.05479, 0.00994)
     medium_pose = cal_pose(0.50435, -0.22916, 0.34435, -0.56995, 0.82005, -0.00978, 0.05071)
-    home_work_pose = cal_pose(0.0, -0.6398, 0.28418, 0.03735, 0.76177, -0.64627, 0.02561)
+    home_work_pose = cal_pose(0.0, -0.6398, 0.18418, 0.03735, 0.76177, -0.64627, 0.02561)
     # 初始化目标位置 
     goal = copy.deepcopy(home_work_pose)
     # 目标物存储位置
@@ -269,7 +271,7 @@ def set_goal_loop():
         release.position.x = x
     '''
     # 标定点
-    point1 = home_joints
+    point1 = [radians(i) for i in [-103.476, 19.573, 66.241, -2.245, 94.954, 35.134]]
     while True:
         G_JOINT_MSG.position = point1
         rospy.sleep(10)
@@ -307,7 +309,7 @@ def set_goal_loop():
         ## 等待机器人启动
         print 'waiting for arm:' + str(read_reg(ARM_READY_REG))
         rospy.sleep(2)
-    if not DEBUG:
+    if  not DEBUG:
         current_joints = read_joints(POINT_CUR_REG, 6)
         while current_joints == None:
             current_joints = read_joints(POINT1_START_REG, 6)
@@ -324,20 +326,12 @@ def set_goal_loop():
     # 回工作原点
     print('go to work home')
     traj_to_work_home = copy.deepcopy(traj_home_to_work)
-    # 将轨迹缩短只取轨迹最后一点
     temp_point = traj_to_work_home.points[-1]
     traj_to_work_home.points = []
     traj_to_work_home.points.append(temp_point)
     execute_trajectory(traj_to_work_home)
     # 执行运动路径
     print('Now at home')
-    # 工作点轨迹，在采摘前的等待点
-    traj_to_work = copy.deepcopy(traj_home_to_work)
-    traj_to_work.points = []
-    traj_to_work.points.append(temp_point)
-    traj_to_work.points[0].positions = work_joints
-    # 到取目标前的等待点
-    execute_trajectory(traj_to_work)
     while not rospy.is_shutdown():
         i = 0
         while i < len(traj_release_goals):
@@ -355,6 +349,8 @@ def set_goal_loop():
                 goal_temp = goal_calibration
             else:
                 goal_temp = goal
+
+
             try:
                 traj_go, traj_back = get_goal_traj(arm, goal_temp, 'y', 1)
                 traj_go = traj_go.joint_trajectory
@@ -362,15 +358,14 @@ def set_goal_loop():
                 print 'go to goal '
                 # 到目标点
                 write_coil(COIL_Y15, GRIPPER_ON)
-                while not execute_trajectory(traj_go, 0.01):
-                    rospy.sleep(2)
-                    # pass
+                while not execute_trajectory(traj_go):
+                    pass
                 if CALIBRATION_FLAG:
                     # 自动标定
                     break
                 write_coil(COIL_Y15, GRIPPER_OFF)                
                 rospy.sleep(1.5)
-                # 回到安全点
+                # 回工作原点
                 print('go back to work home')
                 while not execute_trajectory(traj_back):
                     pass
@@ -378,10 +373,6 @@ def set_goal_loop():
                     # 机器人摄像头调试模式开启，只运行到目标点和回原点
                     execute_trajectory(traj_to_work_home)
                     break
-
-                # 回准备抓取的点
-                while not execute_trajectory(traj_to_work):
-                    pass
                 # 到home点 
                 print('go home')
                 while not execute_trajectory(traj_work_to_home):
@@ -399,9 +390,6 @@ def set_goal_loop():
                 print('go  to work')
                 while not execute_trajectory(traj_home_to_work):
                     pass
-                # 到取目标前的等待点
-                while not execute_trajectory(traj_to_work):
-                    pass
                 # 抓取目标成功标志
                 GOAL_FLAG = 2
                 print 'Done'
@@ -410,7 +398,6 @@ def set_goal_loop():
                 GOAL_FLAG = 3
                 print 'can not go to goal position'
             # rospy.sleep(5)
-
 
 def cal_pose(x,y,z,ax,ay,az,aw, reference_frame = 'base_link'):
     # 根据参数返回 geometry_msgs.msg.Pose()
@@ -424,11 +411,10 @@ def cal_pose(x,y,z,ax,ay,az,aw, reference_frame = 'base_link'):
     target_pose.orientation.w = aw
     return target_pose
 
-
 def get_goal_traj(arm, goal, axis = 'y', direction = -1):
-    # 计算但前位姿到目标位姿的轨迹
-    # 主要取当前位姿，安全位姿，目标位姿三个值为轨迹
-    # 用于规划安全点到达取放点时的轨迹规划
+    ## 计算但前位姿到目标位姿的轨迹
+    ## 主要取当前位姿，安全位姿，目标位姿三个值为轨迹
+    ## 用于规划安全点到达取放点时的轨迹规划
     try:
         goal_temp = copy.deepcopy(goal)
         arm.set_start_state_to_current_state()
@@ -452,7 +438,7 @@ def get_goal_traj(arm, goal, axis = 'y', direction = -1):
         traj_back.joint_trajectory.points.reverse()
         return traj, traj_back
     except:
-        return None, None
+       return None, None
 
 
 def cal_min_traj(group, end_joints, start_pose=None, end_pose=None):
@@ -605,7 +591,7 @@ def server_main():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
-    s.listen(1)
+    s.listen(10) 
     while not rospy.is_shutdown():
         # 等待CLIENT连接
         try:
@@ -669,15 +655,12 @@ def server_main():
                     conn.sendall('*err#')
                     goal_err = False
         except:
-            # 如果出错重新监听
+            ## 如果出错重新监听
+            kill_process()
+            conn.close()
             print 'err'
-            '''
             try:
-                conn.close()
-                s.close()
-                # conn = None
-                # s = None
-                kill_process()
+                s = None
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.bind((host, port))
                 s.listen(1)
@@ -685,11 +668,10 @@ def server_main():
                 goal_err = True
             except:
                 kill_process()
-            '''
 
 
 def server_debug():
-    # socket线程主循环，接收来自视觉的目标请求命令,用于自动标定
+    ## socket线程主循环，接收来自视觉的目标请求命令,用于自动标定
     global GOAL_POSITION
     global GOAL_FLAG
     global GOAL_POSE
@@ -783,10 +765,10 @@ def server_debug():
 
 
 # 执行轨迹
-def execute_trajectory(traj, tolerance = 0.1):
+def execute_trajectory(traj, tolerance = 0.05):
     rospy.loginfo('Executing trajectory')
     rospy.logdebug(traj)
-    time_out = 2
+    time_out = 20.0
     # 取出轨迹
     try:
         indexes = [traj.joint_names.index(joint)
@@ -829,7 +811,7 @@ def execute_trajectory(traj, tolerance = 0.1):
                 read2_flag = not read2_flag
                 
 
-        # 写关节值
+        # 轨迹点长度为奇数，且是最后一个
         point = traj.points[i]
         joints = [point.positions[j] for j in indexes]
         if  not read1_flag:
@@ -884,9 +866,9 @@ def execute_trajectory(traj, tolerance = 0.1):
             while not arrival_flag:
                 ##  等待机器人到达目标位置
                 current_joints = read_joints(current_position_reg, 6)
-                # print('Wait robot go to goal joints')
-                # print(current_joints)
-                # print(joints)
+                print('Wait robot go to goal joints')
+                print(current_joints)
+                print(joints)
                 for k in range(len(joints)):
                     if current_joints == None:
                         break
