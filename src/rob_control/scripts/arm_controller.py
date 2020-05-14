@@ -284,7 +284,7 @@ def set_goal_loop():
     traj_home_to_work = cal_cartesian_path(arm, way_point_home_to_work)
     traj_home_to_work = traj_home_to_work.joint_trajectory
     # 缩减路径点密集度
-    decrease_traj_len(traj_home_to_work, 60)
+    decrease_traj_len(traj_home_to_work, 1000)
     # 笛卡尔路径规划 work to home
     traj_work_to_home = (copy.deepcopy(traj_home_to_work))
     traj_work_to_home.points.reverse()
@@ -338,6 +338,64 @@ def set_goal_loop():
     traj_to_work.points[0].positions = work_joints
     # 到取目标前的等待点
     execute_trajectory(traj_to_work)
+    
+
+
+
+
+
+
+
+
+    
+
+    # 到home点 
+    # 回准备抓取的点
+    '''
+    print('-'*50)
+    print(traj_work_to_home)
+    print('-'*50)
+    time.sleep(15)
+    while True:
+        print('go to ready')
+        time.sleep(5)
+        while not execute_trajectory(traj_to_work):
+            pass
+        time.sleep(10)
+
+        print('go home')
+        while not execute_trajectory(traj_work_to_home):
+            pass
+        # 存储位
+        time.sleep(10)
+        print('go to  release')
+        while not execute_trajectory(traj_release_goals[0]):
+            pass
+        write_coil(COIL_Y15, GRIPPER_ON)
+        # 回home点
+        print('go back')
+        while not execute_trajectory(traj_release_backs[0]):
+            pass
+        # 到工作原点
+        print('go  to work')
+        while not execute_trajectory(traj_home_to_work):
+            pass
+        # 到取目标前的等待点
+        while not execute_trajectory(traj_to_work):
+            pass
+        '''
+
+
+
+
+
+
+
+
+
+
+
+
     while not rospy.is_shutdown():
         i = 0
         while i < len(traj_release_goals):
@@ -364,6 +422,7 @@ def set_goal_loop():
                 write_coil(COIL_Y15, GRIPPER_ON)
                 while not execute_trajectory(traj_go, 0.01):
                     rospy.sleep(2)
+                rospy.sleep(3)
                     # pass
                 if CALIBRATION_FLAG:
                     # 自动标定
@@ -384,15 +443,17 @@ def set_goal_loop():
                     pass
                 # 到home点 
                 print('go home')
+                print(traj_work_to_home)
                 while not execute_trajectory(traj_work_to_home):
                     pass
                 # 存储位
                 print('go to  release')
+                print(traj_release_goals[i])
                 while not execute_trajectory(traj_release_goals[i]):
                     pass
                 write_coil(COIL_Y15, GRIPPER_ON)
                 # 回home点
-                print('go home')
+                print('go back')
                 while not execute_trajectory(traj_release_backs[i]):
                     pass
                 # 到工作原点
@@ -850,9 +911,9 @@ def execute_trajectory(traj, tolerance = 0.1):
             while not arrival_flag:
                 ##  等待机器人到达目标位置
                 current_joints = read_joints(current_position_reg, 6)
-                print('Wait robot go to goal joints')
-                print(current_joints)
-                print(joints)
+                #print('Wait robot go to goal joints')
+                #print(current_joints)
+                #print(joints)
                 for j in range(len(joints)):
                     if current_joints == None:
                         break
